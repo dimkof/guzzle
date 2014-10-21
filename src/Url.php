@@ -1,5 +1,4 @@
 <?php
-
 namespace GuzzleHttp;
 
 /**
@@ -92,7 +91,7 @@ class Url
         if (isset($parts['path']) && strlen($parts['path'])) {
             // Always ensure that the path begins with '/' if set and something
             // is before the path
-            if (isset($parts['host']) && $parts['path'][0] != '/') {
+            if (!empty($parts['host']) && $parts['path'][0] != '/') {
                 $url .= '/';
             }
             $url .= $parts['path'];
@@ -203,8 +202,6 @@ class Url
             $this->host = $host;
             $this->setPort($port);
         }
-
-        return $this;
     }
 
     /**
@@ -218,11 +215,9 @@ class Url
     }
 
     /**
-     * Set the scheme part of the URL (http, https, ftp, etc)
+     * Set the scheme part of the URL (http, https, ftp, etc.)
      *
      * @param string $scheme Scheme to set
-     *
-     * @return Url
      */
     public function setScheme($scheme)
     {
@@ -234,8 +229,6 @@ class Url
         }
 
         $this->scheme = $scheme;
-
-        return $this;
     }
 
     /**
@@ -252,14 +245,10 @@ class Url
      * Set the port part of the URL
      *
      * @param int $port Port to set
-     *
-     * @return Url
      */
     public function setPort($port)
     {
         $this->port = $port;
-
-        return $this;
     }
 
     /**
@@ -285,31 +274,25 @@ class Url
      * Set the path part of the URL
      *
      * @param string $path Path string to set
-     *
-     * @return Url
      */
     public function setPath($path)
     {
         static $search  = [' ',   '?'];
         static $replace = ['%20', '%3F'];
         $this->path = str_replace($search, $replace, $path);
-
-        return $this;
     }
 
     /**
      * Removes dot segments from a URL
-     *
-     * @return Url
      * @link http://tools.ietf.org/html/rfc3986#section-5.2.4
      */
     public function removeDotSegments()
     {
         static $noopPaths = ['' => true, '/' => true, '*' => true];
-        static $ignoreSegments = ['' => true, '.' => true, '..' => true];
+        static $ignoreSegments = ['.' => true, '..' => true];
 
         if (isset($noopPaths[$this->path])) {
-            return $this;
+            return;
         }
 
         $results = [];
@@ -322,27 +305,27 @@ class Url
             }
         }
 
-        // Combine the normalized parts and add the leading slash if needed
-        if ($this->path[0] == '/') {
-            $this->path = '/' . implode('/', $results);
-        } else {
-            $this->path = implode('/', $results);
+        $newPath = implode('/', $results);
+
+        // Add the leading slash if necessary
+        if (substr($this->path, 0, 1) === '/' &&
+            substr($newPath, 0, 1) !== '/'
+        ) {
+            $newPath = '/' . $newPath;
         }
 
         // Add the trailing slash if necessary
-        if ($this->path != '/' && isset($ignoreSegments[end($segments)])) {
-            $this->path .= '/';
+        if ($newPath != '/' && isset($ignoreSegments[end($segments)])) {
+            $newPath .= '/';
         }
 
-        return $this;
+        $this->path = $newPath;
     }
 
     /**
      * Add a relative path to the currently set path.
      *
      * @param string $relativePath Relative path to add
-     *
-     * @return Url
      */
     public function addPath($relativePath)
     {
@@ -351,13 +334,14 @@ class Url
             strlen($relativePath) > 0
         ) {
             // Add a leading slash if needed
-            if ($relativePath[0] != '/') {
+            if ($relativePath[0] !== '/' &&
+                substr($this->path, -1, 1) !== '/'
+            ) {
                 $relativePath = '/' . $relativePath;
             }
-            $this->setPath(str_replace('//', '/', $this->path . $relativePath));
-        }
 
-        return $this;
+            $this->setPath($this->path . $relativePath);
+        }
     }
 
     /**
@@ -384,14 +368,10 @@ class Url
      * Set the password part of the URL
      *
      * @param string $password Password to set
-     *
-     * @return Url
      */
     public function setPassword($password)
     {
         $this->password = $password;
-
-        return $this;
     }
 
     /**
@@ -408,14 +388,10 @@ class Url
      * Set the username part of the URL
      *
      * @param string $username Username to set
-     *
-     * @return Url
      */
     public function setUsername($username)
     {
         $this->username = $username;
-
-        return $this;
     }
 
     /**
@@ -445,7 +421,6 @@ class Url
      *     be a string that will be parsed into a Query object, an array
      *     of key value pairs, or a Query object.
      *
-     * @return Url
      * @throws \InvalidArgumentException
      */
     public function setQuery($query)
@@ -457,11 +432,9 @@ class Url
         } elseif (is_array($query)) {
             $this->query = new Query($query);
         } else {
-            throw new \InvalidArgumentException('Query must be a '
-                . 'QueryInterface, array, or string');
+            throw new \InvalidArgumentException('Query must be a Query, '
+                . 'array, or string. ' . gettype($query) . ' provided.');
         }
-
-        return $this;
     }
 
     /**
@@ -478,14 +451,10 @@ class Url
      * Set the fragment part of the URL
      *
      * @param string $fragment Fragment to set
-     *
-     * @return Url
      */
     public function setFragment($fragment)
     {
         $this->fragment = $fragment;
-
-        return $this;
     }
 
     /**
@@ -548,7 +517,7 @@ class Url
             );
         }
 
-        if (!$parts['path']) {
+        if (!$parts['path'] && $parts['path'] !== '0') {
             // The relative URL has no path, so check if it is just a query
             $path = $this->path ?: '';
             $query = count($parts['query']) ? $parts['query'] : $this->query;

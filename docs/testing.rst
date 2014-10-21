@@ -6,7 +6,7 @@ Guzzle provides several tools that will enable you to easily mock the HTTP
 layer without needing to send requests over the internet.
 
 * Mock subscriber
-* Mock adapter
+* Mock handler
 * Node.js web server for integration testing
 
 Mock Subscriber
@@ -32,16 +32,16 @@ remote API.
     // Create a mock subscriber and queue two responses.
     $mock = new Mock([
         new Response(200, ['X-Foo' => 'Bar']),         // Use response object
-        "HTTP/1.1 202 OKr\nContent-Length: 0\r\n\r\n"  // Use a response string
+        "HTTP/1.1 202 OK\r\nContent-Length: 0\r\n\r\n"  // Use a response string
     ]);
 
     // Add the mock subscriber to the client.
     $client->getEmitter()->attach($mock);
     // The first request is intercepted with the first response.
-    echo $client->get('/')->getStatus();
+    echo $client->get('/')->getStatusCode();
     //> 200
     // The second request is intercepted with the second response.
-    echo $client->get('/')->getStatus();
+    echo $client->get('/')->getStatusCode();
     //> 202
 
 When no more responses are in the queue and a request is sent, an
@@ -134,32 +134,16 @@ Mock Adapter
 ============
 
 In addition to using the Mock subscriber, you can use the
-``GuzzleHttp\Adapter\MockAdapter`` as the adapter of a client to return the
+``GuzzleHttp\Ring\Client\MockAdapter`` as the handler of a client to return the
 same response over and over or return the result of a callable function.
-
-.. code-block:: php
-
-    use GuzzleHttp\Client;
-    use GuzzleHttp\Adapter\MockAdapter;
-    use GuzzleHttp\Adapter\TransactionInterface;
-    use GuzzleHttp\Message\Response;
-
-    $mockAdapter = new MockAdapter(function (TransactionInterface $trans) {
-        // You have access to the request
-        $request = $trans->getRequest();
-        // Return a response
-        return new Response(200);
-    });
-
-    $client = new Client(['adapter' => $mockAdapter]);
 
 Test Web Server
 ===============
 
-Using mock responses is usually enough when testing a web service client. When
-implementing custom :doc:`HTTP adapters <adapters>`, you'll need to send actual
-HTTP requests in order to sufficiently test the adapter. However, a best
-practice is to contact a local web server rather than a server over the
+Using mock responses is almost always enough when testing a web service client.
+When implementing custom :doc:`HTTP handlers <handlers>`, you'll need to send
+actual HTTP requests in order to sufficiently test the handler. However, a
+best practice is to contact a local web server rather than a server over the
 internet.
 
 - Tests are more reliable
@@ -169,19 +153,31 @@ internet.
 Using the test server
 ---------------------
 
+.. warning::
+
+    The following functionality is provided to help developers of Guzzle
+    develop HTTP handlers. There is no promise of backwards compatibility
+    when it comes to the node.js test server or the ``GuzzleHttp\Tests\Server``
+    class. If you are using the test server or ``Server`` class outside of
+    guzzlehttp/guzzle, then you will need to configure autoloading and
+    ensure the web server is started manually.
+
+.. hint::
+
+    You almost never need to use this test web server. You should only ever
+    consider using it when developing HTTP handlers. The test web server
+    is not necessary for mocking requests. For that, please use the
+    Mock subcribers and History subscriber.
+
 Guzzle ships with a node.js test server that receives requests and returns
 responses from a queue. The test server exposes a simple API that is used to
 enqueue responses and inspect the requests that it has received.
 
-In order to use the web server, you'll need to manually require
-``tests/Server.php``. Any operation on the ``Server`` object will ensure that
-the server is running and wait until it is able to receive requets before
+Any operation on the ``Server`` object will ensure that
+the server is running and wait until it is able to receive requests before
 returning.
 
 .. code-block:: php
-
-    // Require the test server (using something like this).
-    require __DIR__ . '/../vendor/guzzlehttp/guzzle/tests/Server.php';
 
     use GuzzleHttp\Client;
     use GuzzleHttp\Tests\Server;

@@ -4,8 +4,8 @@ namespace GuzzleHttp\Tests\CookieJar;
 
 use GuzzleHttp\Cookie\CookieJar;
 use GuzzleHttp\Cookie\SetCookie;
-use GuzzleHttp\Message\Response;
 use GuzzleHttp\Message\Request;
+use GuzzleHttp\Message\Response;
 
 /**
  * @covers GuzzleHttp\Cookie\CookieJar
@@ -228,10 +228,10 @@ class CookieJarTest extends \PHPUnit_Framework_TestCase
     public function getMatchingCookiesDataProvider()
     {
         return array(
-            array('https://example.com', 'foo=bar;baz=foobar'),
+            array('https://example.com', 'foo=bar; baz=foobar'),
             array('http://example.com', ''),
-            array('https://example.com:8912', 'foo=bar;baz=foobar'),
-            array('https://foo.example.com', 'foo=bar;baz=foobar'),
+            array('https://example.com:8912', 'foo=bar; baz=foobar'),
+            array('https://foo.example.com', 'foo=bar; baz=foobar'),
             array('http://foo.example.com/test/acme/', 'googoo=gaga')
         );
     }
@@ -321,5 +321,19 @@ class CookieJarTest extends \PHPUnit_Framework_TestCase
             return $c->getName();
         }, $jar->getIterator()->getArrayCopy());
         $this->assertEquals(['foo', 'test', 'you'], $names);
+    }
+
+    public function testCanConvertToAndLoadFromArray()
+    {
+        $jar = new CookieJar(true);
+        foreach ($this->getTestCookies() as $cookie) {
+            $jar->setCookie($cookie);
+        }
+        $this->assertCount(3, $jar);
+        $arr = $jar->toArray();
+        $this->assertCount(3, $arr);
+        $newCookieJar = new CookieJar(false, $arr);
+        $this->assertCount(3, $newCookieJar);
+        $this->assertSame($jar->toArray(), $newCookieJar->toArray());
     }
 }

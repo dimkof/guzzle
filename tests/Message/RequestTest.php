@@ -4,8 +4,8 @@ namespace GuzzleHttp\Tests\Message;
 
 use GuzzleHttp\Event\Emitter;
 use GuzzleHttp\Message\Request;
-use GuzzleHttp\Stream\Stream;
 use GuzzleHttp\Query;
+use GuzzleHttp\Stream\Stream;
 
 /**
  * @covers GuzzleHttp\Message\Request
@@ -116,5 +116,17 @@ class RequestTest extends \PHPUnit_Framework_TestCase
         $r->setHost('goo:80');
         $this->assertEquals('http://goo', $r->getUrl());
         $this->assertEquals('goo', $r->getHeader('host'));
+    }
+
+    public function testCanChangePort()
+    {
+        $r = new Request('GET', 'http://www.foo.com:222');
+        $this->assertSame(222, $r->getPort());
+        $this->assertEquals('www.foo.com', $r->getHost());
+        $this->assertEquals('www.foo.com:222', $r->getHeader('host'));
+        $r->setPort(80);
+        $this->assertSame(80, $r->getPort());
+        $this->assertEquals('www.foo.com', $r->getHost());
+        $this->assertEquals('www.foo.com', $r->getHeader('host'));
     }
 }

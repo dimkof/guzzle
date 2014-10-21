@@ -1,5 +1,4 @@
 <?php
-
 namespace GuzzleHttp;
 
 /**
@@ -19,46 +18,36 @@ class Query extends Collection
     /**
      * Parse a query string into a Query object
      *
-     * @param string $query Query string to parse
+     * $urlEncoding is used to control how the query string is parsed and how
+     * it is ultimately serialized. The value can be set to one of the
+     * following:
      *
+     * - true: (default) Parse query strings using RFC 3986 while still
+     *   converting "+" to " ".
+     * - false: Disables URL decoding of the input string and URL encoding when
+     *   the query string is serialized.
+     * - 'RFC3986': Use RFC 3986 URL encoding/decoding
+     * - 'RFC1738': Use RFC 1738 URL encoding/decoding
+     *
+     * @param string      $query       Query string to parse
+     * @param bool|string $urlEncoding Controls how the input string is decoded
+     *                                 and encoded.
      * @return self
      */
-    public static function fromString($query)
+    public static function fromString($query, $urlEncoding = true)
     {
+        static $qp;
+        if (!$qp) {
+            $qp = new QueryParser();
+        }
+
         $q = new static();
-        if ($query === '') {
-            return $q;
+
+        if ($urlEncoding !== true) {
+            $q->setEncodingType($urlEncoding);
         }
 
-        $foundDuplicates = $foundPhpStyle = false;
-
-        foreach (explode('&', $query) as $kvp) {
-            $parts = explode('=', $kvp, 2);
-            $key = rawurldecode($parts[0]);
-            if ($paramIsPhpStyleArray = substr($key, -2) == '[]') {
-                $foundPhpStyle = true;
-                $key = substr($key, 0, -2);
-            }
-            if (isset($parts[1])) {
-                $value = rawurldecode(str_replace('+', '%20', $parts[1]));
-                if (isset($q[$key])) {
-                    $q->add($key, $value);
-                    $foundDuplicates = true;
-                } elseif ($paramIsPhpStyleArray) {
-                    $q[$key] = array($value);
-                } else {
-                    $q[$key] = $value;
-                }
-            } else {
-                $q->add($key, null);
-            }
-        }
-
-        // Use the duplicate aggregator if duplicates were found and not using
-        // PHP style arrays.
-        if ($foundDuplicates && !$foundPhpStyle) {
-            $q->setAggregator(self::duplicateAggregator());
-        }
+        $qp->parseInto($q, $query, $urlEncoding);
 
         return $q;
     }
@@ -125,14 +114,10 @@ class Query extends Collection
      *     pairs. The callable accepts an array of query data and returns a
      *     flattened array of key value pairs where each value is an array of
      *     strings.
-     *
-     * @return self
      */
     public function setAggregator(callable $aggregator)
     {
         $this->aggregator = $aggregator;
-
-        return $this;
     }
 
     /**
@@ -140,7 +125,6 @@ class Query extends Collection
      *
      * @param string|bool $type One of 'RFC1738', 'RFC3986', or false to disable encoding
      *
-     * @return self
      * @throws \InvalidArgumentException
      */
     public function setEncodingType($type)
@@ -150,8 +134,6 @@ class Query extends Collection
         } else {
             throw new \InvalidArgumentException('Invalid URL encoding type');
         }
-
-        return $this;
     }
 
     /**

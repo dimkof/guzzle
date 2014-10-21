@@ -32,17 +32,20 @@ headers:
     ]);
 
     $parsed = Request::parseHeader($request, 'Link');
-    echo json_encode($parsed, JSON_PRETTY_PRINT);
+    var_export($parsed);
 
-::
+Will output:
 
-    [
-        {
-            "0": "<http:\/...\/front.jpeg>",
-            "rel": "front",
-            "type": "image\/jpeg"
-        }
-    ]
+.. code-block:: php
+
+    array (
+      0 =>
+      array (
+        0 => '<http:/.../front.jpeg>',
+        'rel' => 'front',
+        'type' => 'image/jpeg',
+      ),
+    )
 
 The result contains a hash of key value pairs. Header values that have no key
 (i.e., the link) are indexed numerically while headers parts that form a key
@@ -70,7 +73,7 @@ You can check to see if a request or response has a body using the
 The body used in request and response objects is a
 ``GuzzleHttp\Stream\StreamInterface``. This stream is used for both uploading
 data and downloading data. Guzzle will, by default, store the body of a message
-in a stream that uses PHP temp streams. When the size of a the body exceeds
+in a stream that uses PHP temp streams. When the size of the body exceeds
 2 MB, the stream will automatically switch to storing data on disk rather than
 in memory (protecting your application from memory exhaustion).
 
@@ -120,15 +123,15 @@ You create requests with a client using the ``createRequest()`` method.
 
 .. code-block:: php
 
-    // Create a request but don't sent it immediately
+    // Create a request but don't send it immediately
     $request = $client->createRequest('GET', 'http://httpbin.org/get');
 
 Request Methods
 ---------------
 
 When creating a request, you are expected to provide the HTTP method you wish
-to perform. You can specfiy any method you'd like, including a custom method
-that might not be part of RFC 2616 (like "MOVE").
+to perform. You can specify any method you'd like, including a custom method
+that might not be part of RFC 7231 (like "MOVE").
 
 .. code-block:: php
 
@@ -335,10 +338,10 @@ Request Config
 --------------
 
 Request messages contain a configuration collection that can be used by
-event listeners and HTTP adapters to modify how a request behaves or is
+event listeners and HTTP handlers to modify how a request behaves or is
 transferred over the wire. For example, many of the request options that are
 specified when creating a request are actually set as config options that are
-only acted upon by adapters and listeners when the request is sent.
+only acted upon by handlers and listeners when the request is sent.
 
 You can get access to the request's config object using the ``getConfig()``
 method of a request.
@@ -368,9 +371,9 @@ access. You can also modify and remove values using array like access.
     var_export($config['foo']);
     // NULL
 
-HTTP adapters and event listeners can expose additional customization options
+HTTP handlers and event listeners can expose additional customization options
 through request config settings. For example, in order to specify custom cURL
-options to the cURL adapter, you need to specify an associative array in the
+options to the cURL handler, you need to specify an associative array in the
 ``curl`` ``config`` request option.
 
 .. code-block:: php
@@ -384,7 +387,7 @@ options to the cURL adapter, you need to specify an associative array in the
         ]
     ]);
 
-Consult the HTTP adapters and event listeners you are using to see if they
+Consult the HTTP handlers and event listeners you are using to see if they
 allow customization through request configuration options.
 
 Event Emitter
@@ -466,7 +469,7 @@ Effective URL
 
 The URL that was ultimately accessed that returned a response can be accessed
 using the ``getEffectiveUrl()`` method of a response. This method will return
-the URL of a reqeust or the URL of the last redirected URL if any redirects
+the URL of a request or the URL of the last redirected URL if any redirects
 occurred while transferring a request.
 
 .. code-block:: php

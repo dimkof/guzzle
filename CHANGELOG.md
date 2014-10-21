@@ -1,6 +1,229 @@
 CHANGELOG
 =========
 
+5.0.1 (2014-10-16)
+------------------
+
+Bugfix release.
+
+* Fixed an issue where connection errors still returned response object in
+  error and end events event though the response is unusable. This has been
+  corrected so that a response is not returned in the `getResponse` method of
+  these events if the response did not complete. https://github.com/guzzle/guzzle/issues/867
+* Fixed an issue where transfer statistics were not being populated in the
+  RingBridge. https://github.com/guzzle/guzzle/issues/866
+
+5.0.0 (2014-10-12)
+------------------
+
+Adding support for non-blocking responses and some minor API cleanup.
+
+### New Features
+
+* Added support for non-blocking responses based on `guzzlehttp/guzzle-ring`.
+* Added a public API for creating a default HTTP adapter.
+* Updated the redirect plugin to be non-blocking so that redirects are sent
+  concurrently. Other plugins like this can now be updated to be non-blocking.
+* Added a "progress" event so that you can get upload and download progress
+  events.
+* Added `GuzzleHttp\Pool` which implements FutureInterface and transfers
+  requests concurrently using a capped pool size as efficiently as possible.
+* Added `hasListeners()` to EmitterInterface.
+* Removed `GuzzleHttp\ClientInterface::sendAll` and marked
+  `GuzzleHttp\Client::sendAll` as deprecated (it's still there, just not the
+  recommended way).
+
+### Breaking changes
+
+The breaking changes in this release are relatively minor. The biggest thing to
+look out for is that request and response objects no longer implement fluent
+interfaces.
+
+* Removed the fluent interfaces (i.e., ``return $this``) from requests,
+  responses, ``GuzzleHttp\Collection``, ``GuzzleHttp\Url``,
+  ``GuzzleHttp\Query``, ``GuzzleHttp\Post\PostBody``, and
+  ``GuzzleHttp\Cookie\SetCookie``. This blog post provides a good outline of
+  why I did this: http://ocramius.github.io/blog/fluent-interfaces-are-evil/.
+  This also makes the Guzzle message interfaces compatible with the current
+  PSR-7 message proposal.
+* Removed "functions.php", so that Guzzle is truly PSR-4 compliant. Except
+  for the HTTP request functions from function.php, these functions are now
+  implemented in `GuzzleHttp\Utils` using camelCase. `GuzzleHttp\json_decode`
+  moved to `GuzzleHttp\Utils::jsonDecode`. `GuzzleHttp\get_path` moved to
+  `GuzzleHttp\Utils::getPath`. `GuzzleHttp\set_path` moved to
+  `GuzzleHttp\Utils::setPath`. `GuzzleHttp\batch` should now be
+  `GuzzleHttp\Pool::batch`, which returns a bjectStorage`. Using functions.php
+  caused problems for many users: they aren't PSR-4 compliant, require an
+  explicit include, and needed an if-guard to ensure that the functions are not
+  declared multiple times.
+* Rewrote adapter layer.
+    * Removing all classes from `GuzzleHttp\Adapter`, these are now
+      implemented as callables that are stored in `GuzzleHttp\Ring\Client`.
+    * Removed the concept of "parallel adapters". Sending requests serially or
+      concurrently is now handled using a single adapter.
+    * Moved `GuzzleHttp\Adapter\Transaction` to `GuzzleHttp\Transaction`. The
+      Transaction object now exposes the request, response, and client as public
+      properties. The getters and setters have been removed.
+* Removed the "headers" event. This event was only useful for changing the
+  body a response once the headers of the response were known. You can implement
+  a similar behavior in a number of ways. One example might be to use a
+  FnStream that has access to the transaction being sent. For example, when the
+  first byte is written, you could check if the response headers match your
+  expectations, and if so, change the actual stream body that is being
+  written to.
+* Removed the `asArray` parameter from
+  `GuzzleHttp\Message\MessageInterface::getHeader`. If you want to get a header
+  value as an array, then use the newly added ``getHeaderAsArray()`` method of
+  ``MessageInterface``. This change makes the Guzzle interfaces compatible with
+  the PSR-7 interfaces.
+* ``GuzzleHttp\Message\MessageFactory`` no longer allows subclasses to add
+  custom request options using double-dispatch (this was an implementation
+  detail). Instead, you should now provide an associative array to the
+  constructor which is a mapping of the request option name mapping to a
+  function that applies the option value to a request.
+* Removed the concept of "throwImmediately" from exceptions and error events.
+  This control mechanism was used to stop a transfer of concurrent requests
+  from completing. This can now be handled by throwing the exception or by
+  cancelling a pool of requests or each outstanding future request individually.
+* Updated to "GuzzleHttp\Streams" 3.0.
+    * `GuzzleHttp\Stream\StreamInterface::getContents()` no longer accepts a
+      `maxLen` parameter. This update makes the Guzzle streams project
+      compatible with the current PSR-7 proposal.
+    * ``GuzzleHttp\Stream\Stream::__construct``,
+      ``GuzzleHttp\Stream\Stream::factory``, and
+      ``GuzzleHttp\Stream\Utils::create`` no longer accept a size in the second
+      argument. They now accept an associative array of options, including the
+      "size" key and "metadata" key which can be used to provide custom metadata.
+
+4.2.2 (2014-09-08)
+------------------
+
+* Fixed a memory leak in the CurlAdapter when reusing cURL handles.
+* No longer using `request_fulluri` in stream adapter proxies.
+* Relative redirects are now based on the last response, not the first response.
+
+4.2.1 (2014-08-19)
+------------------
+
+* Ensuring that the StreamAdapter does not always add a Content-Type header
+* Adding automated github releases with a phar and zip
+
+4.2.0 (2014-08-17)
+------------------
+
+* Now merging in default options using a case-insensitive comparison.
+  Closes https://github.com/guzzle/guzzle/issues/767
+* Added the ability to automatically decode `Content-Encoding` response bodies
+  using the `decode_content` request option. This is set to `true` by default
+  to decode the response body if it comes over the wire with a
+  `Content-Encoding`. Set this value to `false` to disable decoding the
+  response content, and pass a string to provide a request `Accept-Encoding`
+  header and turn on automatic response decoding. This feature now allows you
+  to pass an `Accept-Encoding` header in the headers of a request but still
+  disable automatic response decoding.
+  Closes https://github.com/guzzle/guzzle/issues/764
+* Added the ability to throw an exception immediately when transferring
+  requests in parallel. Closes https://github.com/guzzle/guzzle/issues/760
+* Updating guzzlehttp/streams dependency to ~2.1
+* No longer utilizing the now deprecated namespaced methods from the stream
+  package.
+
+4.1.8 (2014-08-14)
+------------------
+
+* Fixed an issue in the CurlFactory that caused setting the `stream=false`
+  request option to throw an exception.
+  See: https://github.com/guzzle/guzzle/issues/769
+* TransactionIterator now calls rewind on the inner iterator.
+  See: https://github.com/guzzle/guzzle/pull/765
+* You can now set the `Content-Type` header to `multipart/form-data`
+  when creating POST requests to force multipart bodies.
+  See https://github.com/guzzle/guzzle/issues/768
+
+4.1.7 (2014-08-07)
+------------------
+
+* Fixed an error in the HistoryPlugin that caused the same request and response
+  to be logged multiple times when an HTTP protocol error occurs.
+* Ensuring that cURL does not add a default Content-Type when no Content-Type
+  has been supplied by the user. This prevents the adapter layer from modifying
+  the request that is sent over the wire after any listeners may have already
+  put the request in a desired state (e.g., signed the request).
+* Throwing an exception when you attempt to send requests that have the
+  "stream" set to true in parallel using the MultiAdapter.
+* Only calling curl_multi_select when there are active cURL handles. This was
+  previously changed and caused performance problems on some systems due to PHP
+  always selecting until the maximum select timeout.
+* Fixed a bug where multipart/form-data POST fields were not correctly
+  aggregated (e.g., values with "&").
+
+4.1.6 (2014-08-03)
+------------------
+
+* Added helper methods to make it easier to represent messages as strings,
+  including getting the start line and getting headers as a string.
+
+4.1.5 (2014-08-02)
+------------------
+
+* Automatically retrying cURL "Connection died, retrying a fresh connect"
+  errors when possible.
+* cURL implementation cleanup
+* Allowing multiple event subscriber listeners to be registered per event by
+  passing an array of arrays of listener configuration.
+
+4.1.4 (2014-07-22)
+------------------
+
+* Fixed a bug that caused multi-part POST requests with more than one field to
+  serialize incorrectly.
+* Paths can now be set to "0"
+* `ResponseInterface::xml` now accepts a `libxml_options` option and added a
+  missing default argument that was required when parsing XML response bodies.
+* A `save_to` stream is now created lazily, which means that files are not
+  created on disk unless a request succeeds.
+
+4.1.3 (2014-07-15)
+------------------
+
+* Various fixes to multipart/form-data POST uploads
+* Wrapping function.php in an if-statement to ensure Guzzle can be used
+  globally and in a Composer install
+* Fixed an issue with generating and merging in events to an event array
+* POST headers are only applied before sending a request to allow you to change
+  the query aggregator used before uploading
+* Added much more robust query string parsing
+* Fixed various parsing and normalization issues with URLs
+* Fixing an issue where multi-valued headers were not being utilized correctly
+  in the StreamAdapter
+
+4.1.2 (2014-06-18)
+------------------
+
+* Added support for sending payloads with GET requests
+
+4.1.1 (2014-06-08)
+------------------
+
+* Fixed an issue related to using custom message factory options in subclasses
+* Fixed an issue with nested form fields in a multi-part POST
+* Fixed an issue with using the `json` request option for POST requests
+* Added `ToArrayInterface` to `GuzzleHttp\Cookie\CookieJar`
+
+4.1.0 (2014-05-27)
+------------------
+
+* Added a `json` request option to easily serialize JSON payloads.
+* Added a `GuzzleHttp\json_decode()` wrapper to safely parse JSON.
+* Added `setPort()` and `getPort()` to `GuzzleHttp\Message\RequestInterface`.
+* Added the ability to provide an emitter to a client in the client constructor.
+* Added the ability to persist a cookie session using $_SESSION.
+* Added a trait that can be used to add event listeners to an iterator.
+* Removed request method constants from RequestInterface.
+* Fixed warning when invalid request start-lines are received.
+* Updated MessageFactory to work with custom request option methods.
+* Updated cacert bundle to latest build.
+
 4.0.2 (2014-04-16)
 ------------------
 
@@ -34,7 +257,7 @@ CHANGELOG
 -----------------------
 
 * Removed `getConfig()` and `setConfig()` from clients to avoid confusion
-  around whether things like base_url, message_factory, etc should be able to
+  around whether things like base_url, message_factory, etc. should be able to
   be retrieved or modified.
 * Added `getDefaultOption()` and `setDefaultOption()` to ClientInterface
 * functions.php functions were renamed using snake_case to match PHP idioms
@@ -166,11 +389,11 @@ CHANGELOG
 * See UPGRADING.md for more information on how to upgrade.
 * Requests now support the ability to specify an array of $options when creating a request to more easily modify a
   request. You can pass a 'request.options' configuration setting to a client to apply default request options to
-  every request created by a client (e.g. default query string variables, headers, curl options, etc).
+  every request created by a client (e.g. default query string variables, headers, curl options, etc.).
 * Added a static facade class that allows you to use Guzzle with static methods and mount the class to `\Guzzle`.
   See `Guzzle\Http\StaticClient::mount`.
 * Added `command.request_options` to `Guzzle\Service\Command\AbstractCommand` to pass request options to requests
-      created by a command (e.g. custom headers, query string variables, timeout settings, etc).
+      created by a command (e.g. custom headers, query string variables, timeout settings, etc.).
 * Stream size in `Guzzle\Stream\PhpStreamRequestFactory` will now be set if Content-Length is returned in the
   headers of a response
 * Added `Guzzle\Common\Collection::setPath($path, $value)` to set a value into an array using a nested key
@@ -267,7 +490,7 @@ CHANGELOG
 * Removed Guzzle\Parser\ParserRegister::get(). Use getParser()
 * Removed Guzzle\Parser\ParserRegister::set(). Use registerParser().
 * All response header helper functions return a string rather than mixing Header objects and strings inconsistently
-* Removed cURL blacklist support. This is no longer necessary now that Expect, Accept, etc are managed by Guzzle
+* Removed cURL blacklist support. This is no longer necessary now that Expect, Accept, etc. are managed by Guzzle
   directly via interfaces
 * Removed the injecting of a request object onto a response object. The methods to get and set a request still exist
   but are a no-op until removed.
@@ -524,7 +747,7 @@ CHANGELOG
 3.0.1 (2012-10-22)
 ------------------
 
-* Models can now be used like regular collection objects by calling filter, map, etc
+* Models can now be used like regular collection objects by calling filter, map, etc.
 * Models no longer require a Parameter structure or initial data in the constructor
 * Added a custom AppendIterator to get around a PHP bug with the `\AppendIterator`
 
@@ -816,6 +1039,6 @@ CHANGELOG
 * Emitting an event each time a client is generated by a ServiceBuilder
 * Using an ApiParams object instead of a Collection for parameters of an ApiCommand
 * cache.* request parameters should be renamed to params.cache.*
-* Added the ability to set arbitrary curl options on requests (disable_wire, progress, etc). See CurlHandle.
+* Added the ability to set arbitrary curl options on requests (disable_wire, progress, etc.). See CurlHandle.
 * Added the ability to disable type validation of service descriptions
 * ServiceDescriptions and ServiceBuilders are now Serializable

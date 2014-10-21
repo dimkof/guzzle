@@ -9,34 +9,8 @@ page.
 Make a Request
 ==============
 
-You can send requests with Guzzle in one of two ways: through the procedural
-API or using a ``GuzzleHttp\ClientInterface`` object. Using the procedural API
-is an easy way to send a quick HTTP request. Using a Client object provides
-much more flexibility in how requests are transferred and allows you to more
-easily test the client.
-
-Procedural API
---------------
-
-Here's an example of sending a ``GET`` request using the procedural API.
-
-.. code-block:: php
-
-    $response = GuzzleHttp\post('http://httpbin.org/post', [
-        'headers' => ['X-Foo' => 'Bar'],
-        'body'    => ['field_name' => 'value']
-    ]);
-
-You can send all kinds of HTTP requests with the procedural API. Just call
-the function that maps to the HTTP method name.
-
-.. code-block:: php
-
-    $response = GuzzleHttp\head('http://httpbin.org/get');
-    $response = GuzzleHttp\post('http://httpbin.org/post');
-    $response = GuzzleHttp\put('http://httpbin.org/put');
-    $response = GuzzleHttp\delete('http://httpbin.org/delete');
-    $response = GuzzleHttp\options('http://httpbin.org/get');
+You can send requests with Guzzle using a ``GuzzleHttp\ClientInterface``
+object.
 
 Creating a Client
 -----------------
@@ -50,7 +24,7 @@ then you'll need to use a ``GuzzleHttp\ClientInterface`` object.
     use GuzzleHttp\Client;
 
     $client = new Client();
-    $response = $client->get('https://github.com/timeline.json');
+    $response = $client->get('http://httpbin.org/get');
 
     // You can use the same methods you saw in the procedural API
     $response = $client->delete('http://httpbin.org/delete');
@@ -91,6 +65,16 @@ You can get the status code and reason phrase of the response.
     $reason = $response->getReasonPhrase();
     // OK
 
+By providing the ``future`` request option to a request, you can send requests
+asynchronously using the promise interface of a future response.
+
+.. code-block:: php
+
+    $client->get('http://httpbin.org', ['future' => true])
+        ->then(function ($response) {
+            echo $response->getStatusCode();
+        });
+
 Response Body
 -------------
 
@@ -120,9 +104,9 @@ response.
 
 .. code-block:: php
 
-    $response = $client->get('https://github.com/timeline.json');
+    $response = $client->get('http://httpbin.org/get');
     $json = $response->json();
-    var_dump($json[0]['repository']);
+    var_dump($json[0]['origin']);
 
 Guzzle internally uses PHP's ``json_decode()`` function to parse responses. If
 Guzzle is unable to parse the JSON response body, then a
@@ -276,19 +260,33 @@ or response object.
     echo $request->getHeader('X-Foo');
     // Echoes an empty string: ''
 
-POST Requests
-=============
+Uploading Data
+==============
 
-You can send POST requests that contain a raw POST body by passing a
-string, resource returned from ``fopen``, or a
-``GuzzleHttp\Stream\StreamInterface`` object to the ``body`` request option.
+Guzzle provides several methods of uploading data.
+
+You can send requests that contain a stream of data by passing a string,
+resource returned from ``fopen``, or a ``GuzzleHttp\Stream\StreamInterface``
+object to the ``body`` request option.
 
 .. code-block:: php
 
     $r = $client->post('http://httpbin.org/post', ['body' => 'raw data']);
 
+You can easily upload JSON data using the ``json`` request option.
+
+.. code-block:: php
+
+    $r = $client->put('http://httpbin.org/put', ['json' => ['foo' => 'bar']]);
+
+POST Requests
+-------------
+
+In addition to specifying the raw data of a request using the ``body`` request
+option, Guzzle provides helpful abstractions over sending POST data.
+
 Sending POST Fields
--------------------
+~~~~~~~~~~~~~~~~~~~
 
 Sending ``application/x-www-form-urlencoded`` POST requests requires that you
 specify the body of a POST request as an array.
@@ -321,7 +319,7 @@ You can also build up POST requests before sending them.
     $response = $client->send($request);
 
 Sending POST Files
-------------------
+~~~~~~~~~~~~~~~~~~
 
 Sending ``multipart/form-data`` POST requests (POST requests that contain
 files) is the same as sending ``application/x-www-form-urlencoded``, except
@@ -363,7 +361,7 @@ Guzzle can maintain a cookie session for you if instructed using the
 - Set to ``true`` to use a shared cookie session associated with the client.
 - Pass an associative array containing cookies to send in the request and start
   a new cookie session.
-- Set to a ``GuzzleHttp\Subscriber\CookieJar\CookieJarInterface`` object to uss
+- Set to a ``GuzzleHttp\Subscriber\CookieJar\CookieJarInterface`` object to use
   an existing cookie jar.
 
 Redirects
@@ -404,7 +402,7 @@ Exceptions
 
 Guzzle throws exceptions for errors that occur during a transfer.
 
-- In the event of a networking error (connection timeout, DNS errors, etc),
+- In the event of a networking error (connection timeout, DNS errors, etc.),
   a ``GuzzleHttp\Exception\RequestException`` is thrown. This exception
   extends from ``GuzzleHttp\Exception\TransferException``. Catching this
   exception will catch any exception that can be thrown while transferring
@@ -423,7 +421,7 @@ Guzzle throws exceptions for errors that occur during a transfer.
           }
       }
 
-- A ``GuzzleHttp\Exception\ClientErrorResponseException`` is thrown for 400
+- A ``GuzzleHttp\Exception\ClientException`` is thrown for 400
   level errors if the ``exceptions`` request option is set to true. This
   exception extends from ``GuzzleHttp\Exception\BadResponseException`` and
   ``GuzzleHttp\Exception\BadResponseException`` extends from
@@ -431,24 +429,20 @@ Guzzle throws exceptions for errors that occur during a transfer.
 
   .. code-block:: php
 
-      use GuzzleHttp\Exception\ClientErrorResponseException;
+      use GuzzleHttp\Exception\ClientException;
 
       try {
           $client->get('https://github.com/_abc_123_404');
-      } catch (ClientErrorResponseException $e) {
+      } catch (ClientException $e) {
           echo $e->getRequest();
           echo $e->getResponse();
       }
 
-- A ``GuzzleHttp\Exception\ServerErrorResponse`` is thrown for 500 level
+- A ``GuzzleHttp\Exception\ServerException`` is thrown for 500 level
   errors if the ``exceptions`` request option is set to true. This
   exception extends from ``GuzzleHttp\Exception\BadResponseException``.
 - A ``GuzzleHttp\Exception\TooManyRedirectsException`` is thrown when too
-  many redirects are followed. This exception extends from extends from
-  ``GuzzleHttp\Exception\RequestException``.
-- A ``GuzzleHttp\Exception\AdapterException`` is thrown when an error occurs
-  in an HTTP adapter during a parallel request. This exception is only thrown
-  when using the ``sendAll()`` method of a client.
+  many redirects are followed. This exception extends from ``GuzzleHttp\Exception\RequestException``.
 
 All of the above exceptions extend from
 ``GuzzleHttp\Exception\TransferException``.

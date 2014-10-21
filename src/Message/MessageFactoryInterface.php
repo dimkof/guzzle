@@ -1,5 +1,4 @@
 <?php
-
 namespace GuzzleHttp\Message;
 
 use GuzzleHttp\Url;
@@ -39,6 +38,7 @@ interface MessageFactoryInterface
      *
      * - headers: Associative array of headers to add to the request
      * - body: string|resource|array|StreamInterface request body to send
+     * - json: mixed Uploads JSON encoded data using an application/json Content-Type header.
      * - query: Associative array of query string values to add to the request
      * - auth: array|string HTTP auth settings (user, pass[, type="basic"])
      * - version: The HTTP protocol version to use with the request
@@ -54,12 +54,13 @@ interface MessageFactoryInterface
      * - cert: Path a SSL cert or array of (path, pwd)
      * - ssl_key: Path to a private SSL key or array of (path, pwd)
      * - proxy: Specify an HTTP proxy or hash of protocols to proxies
-     * - debug: Set to true or a resource to view adapter specific debug info
+     * - debug: Set to true or a resource to view handler specific debug info
      * - stream: Set to true to stream a response body rather than download it all up front
      * - expect: true/false/integer Controls the "Expect: 100-Continue" header
      * - config: Associative array of request config collection options
+     * - decode_content: true/false/string to control decoding content-encoding responses
      *
-     * @param string     $method  HTTP method (GET, POST, PUT, etc ...)
+     * @param string     $method  HTTP method (GET, POST, PUT, etc.)
      * @param string|Url $url     HTTP URL to connect to
      * @param array      $options Array of options to apply to the request
      *
